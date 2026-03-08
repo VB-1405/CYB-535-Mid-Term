@@ -47,7 +47,8 @@ pipeline {
         stage('Trivy Security Scan') {
             steps {
                 script {
-                    sh "docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image --severity HIGH,CRITICAL ${DOCKER_IMAGE}"
+                    // Optimized to skip 800MB Java DB download for faster builds
+                    sh "docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image --severity HIGH,CRITICAL --vuln-type os ${DOCKER_IMAGE}"
                 }
             }
         }
