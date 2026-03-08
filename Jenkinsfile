@@ -65,6 +65,11 @@ pipeline {
         }
         
         stage('Deploy to Kubernetes') {
+            environment {
+                // Ensure kubectl doesn't use a proxy for internal container communication
+                no_proxy = 'minikube,localhost,127.0.0.1,sonarqube'
+                NO_PROXY = 'minikube,localhost,127.0.0.1,sonarqube'
+            }
             steps {
                 script {
                     sh "kubectl cluster-info --insecure-skip-tls-verify"
