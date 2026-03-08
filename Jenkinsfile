@@ -21,7 +21,6 @@ pipeline {
         
         stage('JUnit Testing with Java 11') {
             steps {
-                // Overriding java.version to 11 for this container
                 sh "docker run --rm --volumes-from jenkins -w ${WORKSPACE} maven:3.9.6-eclipse-temurin-11 mvn -B -Djava.version=11 clean test"
             }
         }
@@ -29,9 +28,9 @@ pipeline {
         stage('SonarQube Analysis with Java 11') {
             steps {
                 script {
+                    // withSonarQubeEnv injects SONAR_AUTH_TOKEN automatically
                     withSonarQubeEnv('sonarqube') {
-                        // Overriding java.version to 11 for sonar scanner
-                        sh "docker run --rm --volumes-from jenkins --network cicd-network -w ${WORKSPACE} maven:3.9.6-eclipse-temurin-11 mvn -B -Djava.version=11 clean sonar:sonar -Dsonar.host.url=${SONARQUBE_SERVER}"
+                        sh "docker run --rm --volumes-from jenkins --network cicd-network -e SONAR_TOKEN=${SONAR_AUTH_TOKEN} -w ${WORKSPACE} maven:3.9.6-eclipse-temurin-11 mvn -B -Djava.version=11 clean sonar:sonar -Dsonar.host.url=${SONARQUBE_SERVER} -Dsonar.login=${SONAR_AUTH_TOKEN}"
                     }
                 }
             }
@@ -40,7 +39,6 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    // Final compilation for the Docker image using Java 17
                     sh "docker run --rm --volumes-from jenkins -w ${WORKSPACE} maven:3.9.6-eclipse-temurin-17 mvn -B -Djava.version=17 clean package -DskipTests"
                     sh "docker build -t ${DOCKER_IMAGE} ."
                 }
