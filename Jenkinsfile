@@ -67,20 +67,15 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 script {
-                    echo "Executing Final Cluster Deployment via Native Routing..."
-                    // 1. Inject the kubectl binary
+                    echo "Executing Absolute Final Cluster Deployment..."
                     sh "docker cp /usr/local/bin/kubectl minikube:/usr/bin/kubectl"
                     
-                    // 2. Fix the internal hostname mapping inside Minikube
-                    // This ensures 'control-plane.minikube.internal' resolves to localhost
-                    sh "docker exec -u root minikube sh -c \"echo '127.0.0.1 control-plane.minikube.internal' >> /etc/hosts\""
+                    // Use the internal port 6443 which is standard for K8s API inside the node
+                    // We also ensure the deployment file is piped correctly into the sub-shell
+                    sh "docker exec -i minikube sh -c 'cat > /tmp/deploy.yaml && kubectl apply --kubeconfig=/etc/kubernetes/admin.conf --server=https://127.0.0.1:6443 --insecure-skip-tls-verify --validate=false -f /tmp/deploy.yaml' < deployment.yaml"
                     
-                    // 3. Apply the deployment using the native admin config
-                    // We don't specify --server or --IP anymore; we let the cluster use its own internal path
-                    sh "docker exec -i minikube kubectl apply --kubeconfig=/etc/kubernetes/admin.conf -f - --validate=false < deployment.yaml"
-                    
-                    // 4. Final Verification
-                    sh "docker exec minikube kubectl get pods --kubeconfig=/etc/kubernetes/admin.conf"
+                    // Final Verification
+                    sh "docker exec minikube kubectl get pods --kubeconfig=/etc/kubernetes/admin.conf --server=https://127.0.0.1:6443 --insecure-skip-tls-verify"
                     echo "ASSIGNMENT COMPLETE: Deployment successful."
                 }
             }
