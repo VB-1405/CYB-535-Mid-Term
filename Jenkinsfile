@@ -2,8 +2,8 @@ pipeline {
     agent any
     
     tools {
-        // This tells Jenkins to use the Maven version we configured in the Tools menu
-        maven 'maven-3.9'
+        // This tells Jenkins to use the Maven tool we named 'Maven' in Settings
+        maven 'Maven'
     }
     
     environment {
