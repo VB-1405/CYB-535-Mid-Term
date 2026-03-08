@@ -67,17 +67,21 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 script {
-                    echo "Deploying via binary injection with localhost override..."
-                    // 1. Ensure kubectl is in the minikube container
+                    echo "Executing Final Cluster Deployment..."
+                    // 1. Ensure the binary is present
                     sh "docker cp /usr/local/bin/kubectl minikube:/usr/bin/kubectl"
                     
-                    // 2. Apply using localhost and internal config
-                    // --server=https://localhost:8443 bypasses the DNS lookup error
-                    // --validate=false ignores the OpenAPI schema download failure
-                    sh "docker exec -i minikube kubectl --kubeconfig=/etc/kubernetes/admin.conf --server=https://localhost:8443 --insecure-skip-tls-verify apply -f - --validate=false < deployment.yaml"
+                    // 2. Get the container's internal IP (the one it listens on)
+                    def k8sIp = sh(script: "docker exec minikube hostname -i", returnStdout: true).trim()
+                    echo "Internal Cluster IP: ${k8sIp}"
                     
-                    // 3. Verify pods
-                    sh "docker exec minikube kubectl --kubeconfig=/etc/kubernetes/admin.conf --server=https://localhost:8443 --insecure-skip-tls-verify get pods"
+                    // 3. Apply using the internal IP and admin config
+                    // This bypasses the 'localhost' connection refused and DNS 'no such host' errors
+                    sh "docker exec -i minikube kubectl --kubeconfig=/etc/kubernetes/admin.conf --server=https://${k8sIp}:8443 --insecure-skip-tls-verify apply -f - --validate=false < deployment.yaml"
+                    
+                    // 4. Verification
+                    sh "docker exec minikube kubectl --kubeconfig=/etc/kubernetes/admin.conf --server=https://${k8sIp}:8443 --insecure-skip-tls-verify get pods"
+                    echo "ASSIGNMENT COMPLETE: Deployment successful."
                 }
             }
         }
