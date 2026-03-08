@@ -2,12 +2,12 @@ pipeline {
     agent any
     
     tools {
-        // This tells Jenkins to use the Maven tool we named 'Maven' in Settings
         maven 'Maven'
     }
     
     environment {
         SONARQUBE_SERVER = 'http://sonarqube:9000'
+        DOCKER_IMAGE = 'vb1405/vrishabh-midterm-cicd:latest'
     }
     
     stages {
@@ -19,7 +19,7 @@ pipeline {
         
         stage('Build') {
             steps {
-                sh 'mvn -B clean compile'
+                sh 'mvn -B clean package -DskipTests'
             }
         }
         
@@ -33,9 +33,45 @@ pipeline {
             steps {
                 script {
                     withSonarQubeEnv('sonarqube') {
-                        // Using the MidTerm credential ID configured in Jenkins
-                        sh "mvn -B sonar:sonar -Dsonar.host.url=\${SONARQUBE_SERVER}"
+                        sh "mvn -B sonar:sonar -Dsonar.host.url=${SONARQUBE_SERVER}"
                     }
+                }
+            }
+        }
+        
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    sh "docker build -t ${DOCKER_IMAGE} ."
+                }
+            }
+        }
+        
+        stage('Trivy Security Scan') {
+            steps {
+                script {
+                    // Scanning the image we just built
+                    sh "trivy image --severity HIGH,CRITICAL ${DOCKER_IMAGE}"
+                }
+            }
+        }
+        
+        stage('Push to Docker Hub') {
+            steps {
+                script {
+                    withCredentials([usernamePassword(credentialsId: 'docker-hub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                        sh "echo ${DOCKER_PASS} | docker login -u ${DOCKER_USER} --password-stdin"
+                        sh "docker push ${DOCKER_IMAGE}"
+                    }
+                }
+            }
+        }
+        
+        stage('Deploy to Kubernetes') {
+            steps {
+                script {
+                    // This deploys our app to the Minikube cluster
+                    sh "kubectl apply -f deployment.yaml"
                 }
             }
         }
