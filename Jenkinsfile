@@ -72,6 +72,7 @@ pipeline {
             }
             steps {
                 script {
+                    sh "unset http_proxy https_proxy && kubectl config set clusters.minikube.server https://minikube:8443"
                     sh "unset http_proxy https_proxy && kubectl cluster-info --insecure-skip-tls-verify"
                     sh "unset http_proxy https_proxy && kubectl apply -f deployment.yaml --validate=false --insecure-skip-tls-verify"
                 }
