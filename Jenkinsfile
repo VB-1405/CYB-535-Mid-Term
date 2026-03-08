@@ -50,8 +50,8 @@ pipeline {
         stage('Trivy Security Scan') {
             steps {
                 script {
-                    // Scanning the image we just built
-                    sh "trivy image --severity HIGH,CRITICAL ${DOCKER_IMAGE}"
+                    // Running Trivy as a separate container - No installation needed!
+                    sh "docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image --severity HIGH,CRITICAL ${DOCKER_IMAGE}"
                 }
             }
         }
@@ -70,7 +70,7 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 script {
-                    // This deploys our app to the Minikube cluster
+                    // We apply the manifest to the cluster
                     sh "kubectl apply -f deployment.yaml"
                 }
             }
