@@ -68,16 +68,17 @@ pipeline {
                     // 1. Get the exact internal URL and Hostname from the cluster's own config
                     def serverUrl = sh(script: "docker exec minikube grep 'server:' /etc/kubernetes/admin.conf | awk '{print \$2}'", returnStdout: true).trim()
                     def serverHost = serverUrl.replaceAll('https://', '').split(':')[0]
-                    echo "Internal Server detected: ${serverUrl} (Host: ${serverHost})"
+                    def containerIp = sh(script: "docker exec minikube hostname -I | awk '{print \$1}'", returnStdout: true).trim()
+                    echo "Internal Server detected: ${serverUrl} (Host: ${serverHost}, Container IP: ${containerIp})"
                     
-                    // 2. Map that hostname to 127.0.0.1 inside the container so it's guaranteed to connect
-                    sh "docker exec -u root minikube sh -c \"echo '127.0.0.1 ${serverHost}' >> /etc/hosts\""
+                    // 2. Map that hostname to the container's own IP inside the container
+                    sh "docker exec -u root minikube sh -c \"sed -i '/${serverHost}/d' /etc/hosts && echo '${containerIp} ${serverHost}' >> /etc/hosts\""
                     
-                    // 3. Apply the deployment using the cluster's own config and URL
-                    sh "docker exec -i minikube sh -c 'cat > /tmp/deploy.yaml && kubectl apply --kubeconfig=/etc/kubernetes/admin.conf --server=${serverUrl} --insecure-skip-tls-verify --validate=false -f /tmp/deploy.yaml' < deployment.yaml"
+                    // 3. Apply the deployment using the cluster's own config
+                    sh "docker exec -i minikube sh -c 'cat > /tmp/deploy.yaml && kubectl apply --kubeconfig=/etc/kubernetes/admin.conf -f /tmp/deploy.yaml' < deployment.yaml"
                     
                     // 4. Verification
-                    sh "docker exec minikube kubectl get pods --kubeconfig=/etc/kubernetes/admin.conf --server=${serverUrl} --insecure-skip-tls-verify"
+                    sh "docker exec minikube kubectl get pods --kubeconfig=/etc/kubernetes/admin.conf"
                     echo "ASSIGNMENT COMPLETE: Deployment successful."
                 }
             }
