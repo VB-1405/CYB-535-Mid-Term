@@ -65,21 +65,19 @@ pipeline {
                     echo "Executing Zero-Guesswork Cluster Deployment..."
                     sh "docker cp /usr/local/bin/kubectl minikube:/usr/bin/kubectl"
                     
-                    // 1. Get the exact internal URL and Hostname from the cluster's own config
+                    // 1. Get the exact internal URL from the cluster's own config
                     def serverUrl = sh(script: "docker exec minikube grep 'server:' /etc/kubernetes/admin.conf | awk '{print \$2}'", returnStdout: true).trim()
-                    def serverHost = serverUrl.replaceAll('https://', '').split(':')[0]
-                    def containerIp = sh(script: "docker exec minikube hostname -I | awk '{print \$1}'", returnStdout: true).trim()
-                    echo "Internal Server detected: ${serverUrl} (Host: ${serverHost}, Container IP: ${containerIp})"
+                    echo "Internal Server detected: ${serverUrl}"
                     
-                    // 2. Map that hostname to the container's own IP inside the container
-                    // Use redirection instead of sed -i to avoid "Device or resource busy" on bind-mounted /etc/hosts
-                    sh "docker exec -u root minikube sh -c \"grep -v '${serverHost}' /etc/hosts > /etc/hosts.tmp && cat /etc/hosts.tmp > /etc/hosts && echo '${containerIp} ${serverHost}' >> /etc/hosts\""
+                    // 2. We skip host mapping and force connection to 127.0.0.1 inside the container for maximum reliability
+                    // This bypasses any DNS/hostname resolution issues completely.
+                    def localServer = "https://127.0.0.1:8443"
                     
-                    // 3. Apply the deployment using the cluster's own config with --insecure-skip-tls-verify and --validate=false for maximum reliability
-                    sh "docker exec -i minikube sh -c 'cat > /tmp/deploy.yaml && kubectl apply --kubeconfig=/etc/kubernetes/admin.conf --insecure-skip-tls-verify --validate=false -f /tmp/deploy.yaml' < deployment.yaml"
+                    // 3. Apply the deployment using the cluster's own config and local 127.0.0.1 endpoint
+                    sh "docker exec -i minikube sh -c 'cat > /tmp/deploy.yaml && kubectl apply --kubeconfig=/etc/kubernetes/admin.conf --server=${localServer} --insecure-skip-tls-verify --validate=false -f /tmp/deploy.yaml' < deployment.yaml"
                     
                     // 4. Verification
-                    sh "docker exec minikube kubectl get pods --kubeconfig=/etc/kubernetes/admin.conf --insecure-skip-tls-verify"
+                    sh "docker exec minikube kubectl get pods --kubeconfig=/etc/kubernetes/admin.conf --server=${localServer} --insecure-skip-tls-verify"
                     echo "ASSIGNMENT COMPLETE: Deployment successful."
                 }
             }
