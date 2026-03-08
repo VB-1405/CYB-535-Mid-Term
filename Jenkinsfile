@@ -67,10 +67,16 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 script {
-                    echo "Deploying directly via Docker Exec to bypass networking issues..."
-                    // This pipes the deployment.yaml into the minikube container's kubectl
-                    sh "docker exec -i minikube kubectl apply -f - < deployment.yaml"
-                    sh "docker exec minikube kubectl get pods"
+                    echo "Deploying via binary injection to bypass all networking/binary issues..."
+                    // 1. Copy the working kubectl binary from Jenkins to Minikube node
+                    sh "docker cp /usr/local/bin/kubectl minikube:/usr/bin/kubectl"
+                    
+                    // 2. Apply the deployment using the injected binary and the internal cluster config
+                    // We use /etc/kubernetes/admin.conf which is the internal "god-mode" config
+                    sh "docker exec -i minikube kubectl --kubeconfig=/etc/kubernetes/admin.conf apply -f - < deployment.yaml"
+                    
+                    // 3. Verify pods
+                    sh "docker exec minikube kubectl --kubeconfig=/etc/kubernetes/admin.conf get pods"
                 }
             }
         }
