@@ -70,11 +70,11 @@ pipeline {
                     echo "Executing Final Cluster Deployment..."
                     sh "docker cp /usr/local/bin/kubectl minikube:/usr/bin/kubectl"
                     
-                    // Get the specific IP of Minikube on the 'cicd-network'
-                    def k8sIp = sh(script: "docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' minikube", returnStdout: true).trim()
-                    echo "Internal Cluster IP on cicd-network: ${k8sIp}"
+                    // Get exactly one IP address from the minikube container
+                    def k8sIp = sh(script: "docker exec minikube hostname -I | awk '{print \$1}'", returnStdout: true).trim()
+                    echo "Internal Cluster IP: ${k8sIp}"
                     
-                    // Apply using the exact IP and skip validation
+                    // Apply the deployment using the internal IP
                     sh "docker exec -i minikube kubectl apply --kubeconfig=/etc/kubernetes/admin.conf --server=https://${k8sIp}:8443 --insecure-skip-tls-verify --validate=false -f - < deployment.yaml"
                     
                     // Final Verification
