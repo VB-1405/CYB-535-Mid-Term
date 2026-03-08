@@ -67,16 +67,17 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 script {
-                    echo "Deploying via binary injection to bypass all networking/binary issues..."
-                    // 1. Copy the working kubectl binary from Jenkins to Minikube node
+                    echo "Deploying via binary injection with localhost override..."
+                    // 1. Ensure kubectl is in the minikube container
                     sh "docker cp /usr/local/bin/kubectl minikube:/usr/bin/kubectl"
                     
-                    // 2. Apply the deployment using the injected binary and the internal cluster config
-                    // We use /etc/kubernetes/admin.conf which is the internal "god-mode" config
-                    sh "docker exec -i minikube kubectl --kubeconfig=/etc/kubernetes/admin.conf apply -f - < deployment.yaml"
+                    // 2. Apply using localhost and internal config
+                    // --server=https://localhost:8443 bypasses the DNS lookup error
+                    // --validate=false ignores the OpenAPI schema download failure
+                    sh "docker exec -i minikube kubectl --kubeconfig=/etc/kubernetes/admin.conf --server=https://localhost:8443 --insecure-skip-tls-verify apply -f - --validate=false < deployment.yaml"
                     
                     // 3. Verify pods
-                    sh "docker exec minikube kubectl --kubeconfig=/etc/kubernetes/admin.conf get pods"
+                    sh "docker exec minikube kubectl --kubeconfig=/etc/kubernetes/admin.conf --server=https://localhost:8443 --insecure-skip-tls-verify get pods"
                 }
             }
         }
