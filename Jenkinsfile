@@ -66,8 +66,8 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 script {
-                    // Added --validate=false to bypass the OpenAPI schema error
-                    sh "kubectl apply -f deployment.yaml --validate=false"
+                    sh "kubectl cluster-info --insecure-skip-tls-verify"
+                    sh "kubectl apply -f deployment.yaml --validate=false --insecure-skip-tls-verify"
                 }
             }
         }
