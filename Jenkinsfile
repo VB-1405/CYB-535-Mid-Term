@@ -68,19 +68,17 @@ pipeline {
             steps {
                 script {
                     echo "Executing Final Cluster Deployment..."
-                    // 1. Ensure the binary is present
                     sh "docker cp /usr/local/bin/kubectl minikube:/usr/bin/kubectl"
                     
-                    // 2. Get the container's internal IP (the one it listens on)
-                    def k8sIp = sh(script: "docker exec minikube hostname -i", returnStdout: true).trim()
-                    echo "Internal Cluster IP: ${k8sIp}"
+                    // Get the specific IP of Minikube on the 'cicd-network'
+                    def k8sIp = sh(script: "docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' minikube", returnStdout: true).trim()
+                    echo "Internal Cluster IP on cicd-network: ${k8sIp}"
                     
-                    // 3. Apply using the internal IP and admin config
-                    // This bypasses the 'localhost' connection refused and DNS 'no such host' errors
-                    sh "docker exec -i minikube kubectl --kubeconfig=/etc/kubernetes/admin.conf --server=https://${k8sIp}:8443 --insecure-skip-tls-verify apply -f - --validate=false < deployment.yaml"
+                    // Apply using the exact IP and skip validation
+                    sh "docker exec -i minikube kubectl apply --kubeconfig=/etc/kubernetes/admin.conf --server=https://${k8sIp}:8443 --insecure-skip-tls-verify --validate=false -f - < deployment.yaml"
                     
-                    // 4. Verification
-                    sh "docker exec minikube kubectl --kubeconfig=/etc/kubernetes/admin.conf --server=https://${k8sIp}:8443 --insecure-skip-tls-verify get pods"
+                    // Final Verification
+                    sh "docker exec minikube kubectl get pods --kubeconfig=/etc/kubernetes/admin.conf --server=https://${k8sIp}:8443 --insecure-skip-tls-verify"
                     echo "ASSIGNMENT COMPLETE: Deployment successful."
                 }
             }
