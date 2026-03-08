@@ -14,41 +14,31 @@ pipeline {
         }
         
         stage('Build with Java 17') {
-            agent {
-                // First Container: Java 17
-                docker { image 'maven:3.9.6-eclipse-temurin-17' }
-            }
             steps {
-                sh 'mvn -B clean package -DskipTests'
+                // Using a manual docker run to ensure the exact Java version
+                sh "docker run --rm -v \$(pwd):/app -w /app maven:3.9.6-eclipse-temurin-17 mvn -B clean package -DskipTests"
             }
         }
         
         stage('JUnit Testing with Java 11') {
-            agent {
-                // Second Container: Java 11
-                docker { image 'maven:3.9.6-eclipse-temurin-11' }
-            }
             steps {
-                sh 'mvn -B test'
+                // Switching to a Java 11 container for tests
+                sh "docker run --rm -v \$(pwd):/app -w /app maven:3.9.6-eclipse-temurin-11 mvn -B test"
             }
         }
         
         stage('SonarQube Analysis with Java 11') {
-            agent {
-                // Third Container: Java 11 (Standard for Sonar 9.9 scanner)
-                docker { image 'maven:3.9.6-eclipse-temurin-11' }
-            }
             steps {
                 script {
                     withSonarQubeEnv('sonarqube') {
-                        sh "mvn -B sonar:sonar -Dsonar.host.url=${SONARQUBE_SERVER}"
+                        // Running Sonar scan in a Java 11 environment
+                        sh "docker run --rm -v \$(pwd):/app -w /app --network cicd-network maven:3.9.6-eclipse-temurin-11 mvn -B sonar:sonar -Dsonar.host.url=${SONARQUBE_SERVER}"
                     }
                 }
             }
         }
         
         stage('Build Docker Image') {
-            // This runs on the "Host" (the Jenkins container) using the Docker CLI we installed
             steps {
                 script {
                     sh "docker build -t ${DOCKER_IMAGE} ."
@@ -59,7 +49,6 @@ pipeline {
         stage('Trivy Security Scan') {
             steps {
                 script {
-                    // This runs a temporary Trivy container
                     sh "docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image --severity HIGH,CRITICAL ${DOCKER_IMAGE}"
                 }
             }
@@ -79,7 +68,6 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 script {
-                    // Deploys using the kubectl we installed in Jenkins
                     sh "kubectl apply -f deployment.yaml"
                 }
             }
