@@ -15,14 +15,14 @@ pipeline {
         
         stage('Build with Java 17') {
             steps {
-                // --volumes-from jenkins allows this container to see the Jenkins workspace
                 sh "docker run --rm --volumes-from jenkins -w ${WORKSPACE} maven:3.9.6-eclipse-temurin-17 mvn -B clean package -DskipTests"
             }
         }
         
         stage('JUnit Testing with Java 11') {
             steps {
-                sh "docker run --rm --volumes-from jenkins -w ${WORKSPACE} maven:3.9.6-eclipse-temurin-11 mvn -B test"
+                // We run 'clean test' to ensure the code is re-compiled with Java 11
+                sh "docker run --rm --volumes-from jenkins -w ${WORKSPACE} maven:3.9.6-eclipse-temurin-11 mvn -B clean test"
             }
         }
         
@@ -30,8 +30,8 @@ pipeline {
             steps {
                 script {
                     withSonarQubeEnv('sonarqube') {
-                        // We add --network cicd-network so it can reach the sonarqube container
-                        sh "docker run --rm --volumes-from jenkins --network cicd-network -w ${WORKSPACE} maven:3.9.6-eclipse-temurin-11 mvn -B sonar:sonar -Dsonar.host.url=${SONARQUBE_SERVER}"
+                        // We run 'clean sonar:sonar' to ensure compatibility
+                        sh "docker run --rm --volumes-from jenkins --network cicd-network -w ${WORKSPACE} maven:3.9.6-eclipse-temurin-11 mvn -B clean sonar:sonar -Dsonar.host.url=${SONARQUBE_SERVER}"
                     }
                 }
             }
@@ -40,6 +40,8 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
+                    // Final build for the Docker image is done with Java 17 (per your requirement)
+                    sh "docker run --rm --volumes-from jenkins -w ${WORKSPACE} maven:3.9.6-eclipse-temurin-17 mvn -B clean package -DskipTests"
                     sh "docker build -t ${DOCKER_IMAGE} ."
                 }
             }
