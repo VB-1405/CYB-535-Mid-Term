@@ -15,6 +15,7 @@ spec:
       containers:
       - name: vrishabh-midterm-app
         image: vb1405/vrishabh-midterm-cicd:latest
+        imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8080
 ---
