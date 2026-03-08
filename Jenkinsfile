@@ -15,6 +15,7 @@ pipeline {
         
         stage('Build with Java 17') {
             agent {
+                // First Container: Java 17
                 docker { image 'maven:3.9.6-eclipse-temurin-17' }
             }
             steps {
@@ -24,6 +25,7 @@ pipeline {
         
         stage('JUnit Testing with Java 11') {
             agent {
+                // Second Container: Java 11
                 docker { image 'maven:3.9.6-eclipse-temurin-11' }
             }
             steps {
@@ -31,10 +33,10 @@ pipeline {
             }
         }
         
-        stage('SonarQube Analysis') {
-            // Sonar 9.9 requires Java 17+ to run the scanner
+        stage('SonarQube Analysis with Java 11') {
             agent {
-                docker { image 'maven:3.9.6-eclipse-temurin-17' }
+                // Third Container: Java 11 (Standard for Sonar 9.9 scanner)
+                docker { image 'maven:3.9.6-eclipse-temurin-11' }
             }
             steps {
                 script {
@@ -46,9 +48,9 @@ pipeline {
         }
         
         stage('Build Docker Image') {
+            // This runs on the "Host" (the Jenkins container) using the Docker CLI we installed
             steps {
                 script {
-                    // This uses the host's Docker engine
                     sh "docker build -t ${DOCKER_IMAGE} ."
                 }
             }
@@ -57,6 +59,7 @@ pipeline {
         stage('Trivy Security Scan') {
             steps {
                 script {
+                    // This runs a temporary Trivy container
                     sh "docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image --severity HIGH,CRITICAL ${DOCKER_IMAGE}"
                 }
             }
@@ -76,6 +79,7 @@ pipeline {
         stage('Deploy to Kubernetes') {
             steps {
                 script {
+                    // Deploys using the kubectl we installed in Jenkins
                     sh "kubectl apply -f deployment.yaml"
                 }
             }
