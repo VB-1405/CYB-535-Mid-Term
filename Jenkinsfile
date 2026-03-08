@@ -66,14 +66,14 @@ pipeline {
         
         stage('Deploy to Kubernetes') {
             environment {
-                // Ensure kubectl doesn't use a proxy for internal container communication
+                KUBECONFIG = '/var/jenkins_home/.kube/config'
                 no_proxy = 'minikube,localhost,127.0.0.1,sonarqube'
                 NO_PROXY = 'minikube,localhost,127.0.0.1,sonarqube'
             }
             steps {
                 script {
-                    sh "kubectl cluster-info --insecure-skip-tls-verify"
-                    sh "kubectl apply -f deployment.yaml --validate=false --insecure-skip-tls-verify"
+                    sh "unset http_proxy https_proxy && kubectl cluster-info --insecure-skip-tls-verify"
+                    sh "unset http_proxy https_proxy && kubectl apply -f deployment.yaml --validate=false --insecure-skip-tls-verify"
                 }
             }
         }
