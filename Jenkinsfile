@@ -19,13 +19,13 @@ pipeline {
         
         stage('Build') {
             steps {
-                sh 'mvn clean compile'
+                sh 'mvn -B clean compile'
             }
         }
         
         stage('JUnit Testing') {
             steps {
-                sh 'mvn test'
+                sh 'mvn -B test'
             }
         }
         
@@ -34,7 +34,7 @@ pipeline {
                 script {
                     withSonarQubeEnv('sonarqube') {
                         // Using the MidTerm credential ID configured in Jenkins
-                        sh "mvn sonar:sonar -Dsonar.host.url=\${SONARQUBE_SERVER}"
+                        sh "mvn -B sonar:sonar -Dsonar.host.url=\${SONARQUBE_SERVER}"
                     }
                 }
             }
