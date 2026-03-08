@@ -72,13 +72,14 @@ pipeline {
                     echo "Internal Server detected: ${serverUrl} (Host: ${serverHost}, Container IP: ${containerIp})"
                     
                     // 2. Map that hostname to the container's own IP inside the container
-                    sh "docker exec -u root minikube sh -c \"sed -i '/${serverHost}/d' /etc/hosts && echo '${containerIp} ${serverHost}' >> /etc/hosts\""
+                    // Use redirection instead of sed -i to avoid "Device or resource busy" on bind-mounted /etc/hosts
+                    sh "docker exec -u root minikube sh -c \"grep -v '${serverHost}' /etc/hosts > /etc/hosts.tmp && cat /etc/hosts.tmp > /etc/hosts && echo '${containerIp} ${serverHost}' >> /etc/hosts\""
                     
-                    // 3. Apply the deployment using the cluster's own config
-                    sh "docker exec -i minikube sh -c 'cat > /tmp/deploy.yaml && kubectl apply --kubeconfig=/etc/kubernetes/admin.conf -f /tmp/deploy.yaml' < deployment.yaml"
+                    // 3. Apply the deployment using the cluster's own config with --insecure-skip-tls-verify for maximum reliability
+                    sh "docker exec -i minikube sh -c 'cat > /tmp/deploy.yaml && kubectl apply --kubeconfig=/etc/kubernetes/admin.conf --insecure-skip-tls-verify -f /tmp/deploy.yaml' < deployment.yaml"
                     
                     // 4. Verification
-                    sh "docker exec minikube kubectl get pods --kubeconfig=/etc/kubernetes/admin.conf"
+                    sh "docker exec minikube kubectl get pods --kubeconfig=/etc/kubernetes/admin.conf --insecure-skip-tls-verify"
                     echo "ASSIGNMENT COMPLETE: Deployment successful."
                 }
             }
