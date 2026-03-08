@@ -65,21 +65,12 @@ pipeline {
         }
         
         stage('Deploy to Kubernetes') {
-            environment {
-                KUBECONFIG = '/var/jenkins_home/.kube/config'
-            }
             steps {
                 script {
-                    // 1. Find the random port Minikube is using on your Mac
-                    def hostPort = sh(script: "docker inspect --format='{{(index (index .NetworkSettings.Ports \"8443/tcp\") 0).HostPort}}' minikube", returnStdout: true).trim()
-                    echo "Detected Minikube Host Port: ${hostPort}"
-                    
-                    // 2. Tell kubectl to use the host gateway instead of the container IP
-                    sh "kubectl config set clusters.minikube.server https://host.docker.internal:${hostPort}"
-                    
-                    // 3. Deploy
-                    sh "unset http_proxy https_proxy && kubectl cluster-info --insecure-skip-tls-verify"
-                    sh "unset http_proxy https_proxy && kubectl apply -f deployment.yaml --validate=false --insecure-skip-tls-verify"
+                    echo "Deploying directly via Docker Exec to bypass networking issues..."
+                    // This pipes the deployment.yaml into the minikube container's kubectl
+                    sh "docker exec -i minikube kubectl apply -f - < deployment.yaml"
+                    sh "docker exec minikube kubectl get pods"
                 }
             }
         }
