@@ -4,7 +4,7 @@
 
 ---
 
-## 1. Environment Setup (Terminal)
+## 1. Environment Setup
 ```bash
 # 1. Create Network
 docker network create cicd-network
@@ -26,7 +26,7 @@ docker exec -u root jenkins install -o root -g root -m 0755 kubectl /usr/local/b
 
 ---
 
-## 2. Final Jenkinsfile (The "DNS Fix" Version)
+## 2. Jenkinsfile
 ```groovy
 pipeline {
     agent any
