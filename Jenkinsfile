@@ -25,12 +25,13 @@ pipeline {
             }
         }
         
-        stage('SonarQube Analysis with Java 8') {
+        stage('SonarQube Analysis (Java 8 Compatibility)') {
             steps {
                 script {
                     withSonarQubeEnv('sonarqube') {
-                        // Forcing plugin version 3.9.1.2184 which is the last version compatible with Java 8
-                        sh "docker run --rm --volumes-from jenkins --network cicd-network -e SONAR_TOKEN=${SONAR_AUTH_TOKEN} -w ${WORKSPACE} maven:3.9.6-eclipse-temurin-8 mvn -B -Djava.version=8 org.sonarsource.scanner.maven:sonar-maven-plugin:3.9.1.2184:sonar -Dsonar.host.url=${SONARQUBE_SERVER} -Dsonar.login=${SONAR_AUTH_TOKEN} -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml -Dsonar.coverage.exclusions=**/* -Dsonar.cpd.exclusions=**/*"
+                        // We use Java 11 to run the scanner (required by SonarQube 9.9+)
+                        // but target Java 1.8 compatibility for the code analysis.
+                        sh "docker run --rm --volumes-from jenkins --network cicd-network -e SONAR_TOKEN=${SONAR_AUTH_TOKEN} -w ${WORKSPACE} maven:3.9.6-eclipse-temurin-11 mvn -B -Djava.version=11 sonar:sonar -Dsonar.host.url=${SONARQUBE_SERVER} -Dsonar.login=${SONAR_AUTH_TOKEN} -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml -Dsonar.coverage.exclusions=**/* -Dsonar.cpd.exclusions=**/* -Dsonar.java.source=1.8"
                     }
                 }
             }
